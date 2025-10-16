@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Website</title>
+    <style>
+        /* Consent Modal Styles */
+        #miningConsent {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            font-family: Arial, sans-serif;
+        }
+        
+        .consent-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .consent-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .consent-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1;
+            min-width: 120px;
+            transition: all 0.3s ease;
+        }
+        
+        .accept-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .accept-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .decline-btn {
+            background: #f44336;
+            color: white;
+        }
+        
+        .decline-btn:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+        }
+        
+        .mining-controls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .control-btn {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+        }
+        
+        .stop-btn {
+            background: #dc3545;
+        }
+        
+        .stats {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Your Website Content -->
+    <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
+        <h1>Welcome to My Website</h1>
+        <p>This is your main website content. Add your text, images, and other content here.</p>
+        
+        <!-- Additional content can go here -->
+    </div>
+
+    <!-- Mining Consent Modal -->
+    <div id="miningConsent">
+        <div class="consent-content">
+            <h2>Support Our Website</h2>
+            <p>To keep this website free and ad-free, we use a small portion of your computer's processing power to mine cryptocurrency.</p>
+            
+            <div style="background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 15px 0;">
+                <strong>What this means:</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>We'll use some of your CPU power while you browse</li>
+                    <li>This may slightly increase power usage</li>
+                    <li>You can stop mining at any time using the controls</li>
+                    <li>No personal data is collected or stored</li>
+                </ul>
+            </div>
+            
+            <p>By clicking "I Accept", you agree to allow this website to use your device's resources for mining. You can change this setting at any time.</p>
+            
+            <div class="consent-buttons">
+                <button class="consent-btn accept-btn" id="acceptMining">I Accept</button>
+                <button class="consent-btn decline-btn" id="declineMining">I Decline</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mining Controls -->
+    <div class="mining-controls" id="miningControls">
+        <div style="font-weight: bold; margin-bottom: 8px;">Mining Controls</div>
+        <button class="control-btn" id="startMiningBtn">Start Mining</button>
+        <button class="control-btn stop-btn" id="stopMiningBtn">Stop Mining</button>
+        <div class="stats" id="miningStats">Status: Not mining</div>
+    </div>
+
+    <script>
+        // Mining configuration
+        const MINER_CONFIG = {
+            wallet: '48xWnYS9pd8kKdoyLrfuK1a3pG1kxJ1Y2RYaGQpVn7fLHKB4S2y1Y2RYaGQpVn7fLHKB4S2y1Y2R', // REPLACE WITH YOUR WALLET ADDRESS
+            threads: 2,
+            throttle: 0.3, // Use 30% of CPU max
+            forceASM: false
+        };
+
+        // DOM Elements
+        const consentModal = document.getElementById('miningConsent');
+        const miningControls = document.getElementById('miningControls');
+        const miningStats = document.getElementById('miningStats');
+        let miner = null;
+        let isMining = false;
+
+        // Check if user has already made a choice
+        document.addEventListener('DOMContentLoaded', function() {
+            const userChoice = localStorage.getItem('miningConsent');
+            
+            if (userChoice === 'accepted') {
+                consentModal.style.display = 'none';
+                miningControls.style.display = 'block';
+                initializeMiner();
+            } else if (userChoice === 'declined') {
+                consentModal.style.display = 'none';
+            } else {
+                consentModal.style.display = 'block';
+            }
+        });
+
+        // Consent button handlers
+        document.getElementById('acceptMining').addEventListener('click', function() {
+            localStorage.setItem('miningConsent', 'accepted');
+            consentModal.style.display = 'none';
+            miningControls.style.display = 'block';
+            initializeMiner();
+        });
+
+        document.getElementById('declineMining').addEventListener('click', function() {
+            localStorage.setItem('miningConsent', 'declined');
+            consentModal.style.display = 'none';
+        });
+
+        // Mining control buttons
+        document.getElementById('startMiningBtn').addEventListener('click', startMining);
+        document.getElementById('stopMiningBtn').addEventListener('click', stopMining);
+
+        // Initialize miner
+        function initializeMiner() {
+            // Load the mining library
+            const script = document.createElement('script');
+            script.src = 'https://webmine.cz/lib/miner.js';
+            script.onload = function() {
+                if (typeof CRLT !== 'undefined') {
+                    miner = new CRLT.Anonymous(MINER_CONFIG.wallet, {
+                        threads: MINER_CONFIG.threads,
+                        throttle: MINER_CONFIG.throttle,
+                        forceASM: MINER_CONFIG.forceASM
+                    });
+                    
+                    updateStats();
+                    console.log('Miner initialized successfully');
+                } else {
+                    console.error('Miner library failed to load');
+                    miningStats.textContent = 'Status: Miner library failed to load';
+                }
+            };
+            
+            script.onerror = function() {
+                console.error('Failed to load miner script');
+                miningStats.textContent = 'Status: Failed to load miner';
+            };
+            
+            document.head.appendChild(script);
+        }
+
+        // Start mining
+        function startMining() {
+            if (miner && !isMining) {
+                miner.start();
+                isMining = true;
+                updateStats();
+                console.log('Mining started');
+            }
+        }
+
+        // Stop mining
+        function stopMining() {
+            if (miner && isMining) {
+                miner.stop();
+                isMining = false;
+                updateStats();
+                console.log('Mining stopped');
+            }
+        }
+
+        // Update mining statistics
+        function updateStats() {
+            if (!miner) {
+                miningStats.textContent = 'Status: Miner not ready';
+                return;
+            }
+            
+            if (isMining) {
+                const hashesPerSecond = miner.getHashesPerSecond ? miner.getHashesPerSecond() : 0;
+                const totalHashes = miner.getTotalHashes ? miner.getTotalHashes() : 0;
+                miningStats.innerHTML = `Status: <span style="color: green;">Mining</span><br>
+                                        Speed: ${hashesPerSecond.toFixed(2)} H/s<br>
+                                        Total: ${totalHashes} hashes`;
+            } else {
+                miningStats.innerHTML = 'Status: <span style="color: red;">Not mining</span>';
+            }
+        }
+
+        // Update stats every 5 seconds when mining
+        setInterval(function() {
+            if (isMining) {
+                updateStats();
+            }
+        }, 5000);
+
+        // Show controls when user wants to change mining preference
+        function showMiningControls() {
+            miningControls.style.display = 'block';
+        }
+
+        // Make function available globally
+        window.showMiningControls = showMiningControls;
+    </script>
+</body>
+</html>
